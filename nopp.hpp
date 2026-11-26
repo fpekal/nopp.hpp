@@ -2,7 +2,6 @@
 #include <future>
 #include <initializer_list>
 #include <memory>
-#include <print>
 #include <sys/wait.h>
 #include <thread>
 #include <unistd.h>
@@ -65,14 +64,14 @@ public:
 
     status = RUNNING;
     if (args.size() > 0) {
-      std::print("nopp: ");
+      std::cout << "nopp: ";
       for (auto &a : args) {
         if (has_space(a))
-          std::print("'{}' ", a);
+          std::cout << '\'' << a << "' ";
         else
-          std::print("{} ", a);
+          std::cout << a << ' ';
       }
-      std::print("\n");
+      std::cout << '\n';
 
       running_thread = std::jthread{[this]() {
         pid_t pid = fork();
