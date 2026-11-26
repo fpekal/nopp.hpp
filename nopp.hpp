@@ -25,36 +25,45 @@ public:
     DONE,
   };
 
-  template <class... Args> static std::shared_ptr<Step> create(Args &&...args) {
-    auto ret = std::shared_ptr<Step>{new Step(std::forward<Args>(args)...)};
+  // Create a new EMPTY step
+  static std::shared_ptr<Step> create() {
+    auto ret = std::shared_ptr<Step>{new Step()};
     ret->self = ret;
     return ret;
   }
 
-  static std::shared_ptr<Step>
-  create(std::initializer_list<std::string> &&args) {
+  // Create a new step
+  static std::shared_ptr<Step> create(std::initializer_list<std::string> args) {
     auto ret = std::shared_ptr<Step>{new Step(std::move(args))};
     ret->self = ret;
     return ret;
   }
 
-  template <class... Args> std::shared_ptr<Step> add(Args &&...args) {
-    auto s = create(std::forward<Args>(args)...);
+  // Create a new EMPTY task, put previous as the dependency and return this new
+  // task.
+  std::shared_ptr<Step> add() {
+    auto s = create();
     s->depend_on(self.lock());
     return s;
   }
 
-  std::shared_ptr<Step> add(std::initializer_list<std::string> &&args) {
+  // Create a new task, put previous as the dependency and return this new task.
+  std::shared_ptr<Step> add(std::initializer_list<std::string> args) {
     auto s = create(std::move(args));
     s->depend_on(self.lock());
     return s;
   }
 
+  // Add a dependency. Dependencies run before this step
   std::shared_ptr<Step> depend_on(std::shared_ptr<Step> other) {
     dependencies.push_back(other);
     return self.lock();
   }
 
+  // Wait for dependencies and then run this step on a new thread.
+  //
+  // Maybe this function should be rewritten to not block on waiting for
+  // dependencies?
   void run() {
     if (status != READY)
       return;
@@ -106,6 +115,7 @@ public:
     }
   }
 
+  // Get a future of this step.
   std::shared_future<void> get_future() { return future; }
 
 private:
@@ -202,8 +212,10 @@ public:
     }
   }
 
+  // Read a value of some option provided to the `./nopp`
   template <class T> std::optional<T> option(std::string_view str);
 
+  // Rebuild `./nopp` if nopp.cpp changed
   void rebuild_urself() {
     auto nopp_time = std::filesystem::last_write_time(argv[0]);
     auto nopp_source_time = std::filesystem::last_write_time("nopp.cpp");
@@ -216,9 +228,13 @@ public:
     execvp(argv[0], argv);
   }
 
+  // It's buildin' time!
   void build() { actions.at(selected_action)->run(); }
 
+  // Get default action
+  // Add steps as dependencies to run them when action runs
   std::shared_ptr<Step> get_default() { return default_action; }
+  // Create a new action runnable using `./nopp action_name`
   std::shared_ptr<Step> action(std::string_view str) {
     auto a = Step::create();
     actions.insert({std::string{str}, a});
