@@ -88,11 +88,12 @@ public:
         }
 
         promise.set_value();
+        status = DONE;
       }};
     } else {
       promise.set_value();
+      status = DONE;
     }
-    status = DONE;
   }
 
   std::shared_future<void> get_future() { return future; }
@@ -108,7 +109,7 @@ private:
 
   std::weak_ptr<Step> self;
 
-  Status status;
+  Status status = READY;
   std::vector<std::shared_ptr<Step>> dependencies;
   std::vector<std::string> args;
   std::shared_future<void> future;
