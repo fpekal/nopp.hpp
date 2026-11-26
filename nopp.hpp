@@ -128,6 +128,10 @@ public:
     default_action = Step::create();
     actions.insert({"default", default_action});
 
+    rebuildng_urself_step =
+        Step::create({"g++", "-std=c++26", "-o", argv[0], "nopp.cpp"});
+    action("rebuild_nopp")->depend_on(rebuildng_urself_step);
+
     if (argc > 1) {
       // TODO: make it better
       selected_action = argv[1];
@@ -135,13 +139,13 @@ public:
   }
 
   void rebuild_urself() {
-    auto nopp_time = std::filesystem::last_write_time("nopp");
+    auto nopp_time = std::filesystem::last_write_time(argv[0]);
     auto nopp_source_time = std::filesystem::last_write_time("nopp.cpp");
 
     if (nopp_time > nopp_source_time)
       return;
 
-    Step::create({"g++", "-std=c++26", "-o", "nopp", "nopp.cpp"})->run();
+    rebuildng_urself_step->run();
     execvp(argv[0], argv);
   }
 
@@ -159,6 +163,7 @@ private:
   std::map<std::string, std::shared_ptr<Step>> actions;
 
   std::shared_ptr<Step> default_action;
+  std::shared_ptr<Step> rebuildng_urself_step;
 
   char **argv;
 };
