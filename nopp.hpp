@@ -39,6 +39,7 @@ public:
     return ret;
   }
 
+  // Create a new step
   static std::shared_ptr<Step> create(std::initializer_list<std::string> args) {
     return create(std::span<const std::string>{args.begin(), args.size()});
   }
@@ -52,10 +53,15 @@ public:
   }
 
   // Create a new task, put previous as the dependency and return this new task.
-  std::shared_ptr<Step> add(std::span<std::string> args) {
+  std::shared_ptr<Step> add(std::span<const std::string> args) {
     auto s = create(std::move(args));
     s->depend_on(self.lock());
     return s;
+  }
+
+  // Create a new task, put previous as the dependency and return this new task.
+  std::shared_ptr<Step> add(std::initializer_list<std::string> args) {
+    return add(std::span<const std::string>{args.begin(), args.size()});
   }
 
   // Add a dependency. Dependencies run before this step
