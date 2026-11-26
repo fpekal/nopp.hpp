@@ -146,6 +146,7 @@ public:
       return;
 
     rebuildng_urself_step->run();
+    rebuildng_urself_step->get_future().wait();
     execvp(argv[0], argv);
   }
 
