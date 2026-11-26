@@ -5,6 +5,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <string_view>
 #include <sys/wait.h>
 #include <thread>
 #include <unistd.h>
@@ -139,11 +140,69 @@ public:
         Step::create({"g++", "-std=c++26", "-o", argv[0], "nopp.cpp"});
     action("rebuild_nopp")->depend_on(rebuildng_urself_step);
 
-    if (argc > 1) {
-      // TODO: make it better
-      selected_action = argv[1];
+    argc -= 1; // prog name
+    argv += 1;
+
+    if (argc > 0) {
+      if (argv[0][0] != '-') {
+        selected_action = argv[0];
+
+        argc -= 1;
+        argv += 1;
+      }
+    }
+
+    std::pair<std::string, std::string> new_option;
+    bool parsed_name = false;
+
+    while (argc > 0) {
+      std::string arg = argv[0];
+
+      if (parsed_name == false) {
+        if (arg[0] != '-') {
+          std::cerr << "Option didn't start with '-'\n";
+          exit(1);
+        }
+
+        if (arg.size() == 1) {
+          std::cerr << "Option is just '-'\n";
+          exit(1);
+        }
+
+        if (arg[1] != '-') {
+          for (int i = 1; i < arg.size(); ++i) {
+            options.push_back({std::string{"-"} + arg[i], ""});
+          }
+          argc -= 1;
+          argv += 1;
+          continue;
+        }
+
+        new_option.first = arg;
+        parsed_name = true;
+        argc -= 1;
+        argv += 1;
+        continue;
+      }
+
+      if (arg[0] != '-') {
+        new_option.second = arg;
+        argc -= 1;
+        argv += 1;
+      }
+
+      options.push_back(new_option);
+      new_option = {};
+      parsed_name = false;
+    }
+
+    if (parsed_name) {
+      options.push_back(new_option);
+      new_option = {};
     }
   }
+
+  template <class T> std::optional<T> option(std::string_view str);
 
   void rebuild_urself() {
     auto nopp_time = std::filesystem::last_write_time(argv[0]);
@@ -173,6 +232,7 @@ private:
   std::shared_ptr<Step> default_action;
   std::shared_ptr<Step> rebuildng_urself_step;
 
+  std::vector<std::pair<std::string, std::string>> options;
   char **argv;
 };
 
