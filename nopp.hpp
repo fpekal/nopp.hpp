@@ -1,6 +1,9 @@
 #pragma once
+#include <filesystem>
 #include <future>
 #include <initializer_list>
+#include <iostream>
+#include <map>
 #include <memory>
 #include <sys/wait.h>
 #include <thread>
@@ -120,10 +123,44 @@ private:
 // Stores the building state
 class NOPP {
 public:
-  NOPP(int argc, char *argv[]);
+  NOPP(int argc, char *argv[]) {
+    this->argv = argv;
+    default_action = Step::create();
+    actions.insert({"default", default_action});
+
+    if (argc > 1) {
+      // TODO: make it better
+      selected_action = argv[1];
+    }
+  }
+
+  void rebuild_urself() {
+    auto nopp_time = std::filesystem::last_write_time("nopp");
+    auto nopp_source_time = std::filesystem::last_write_time("nopp.cpp");
+
+    if (nopp_time > nopp_source_time)
+      return;
+
+    Step::create({"g++", "-std=c++26", "-o", "nopp", "nopp.cpp"})->run();
+    execvp(argv[0], argv);
+  }
+
+  void build() { actions.at(selected_action)->run(); }
+
+  std::shared_ptr<Step> get_default() { return default_action; }
+  std::shared_ptr<Step> action(std::string_view str) {
+    auto a = Step::create();
+    actions.insert({std::string{str}, a});
+    return a;
+  }
 
 private:
-  std::shared_ptr<Step> default_step;
+  std::string selected_action = "default";
+  std::map<std::string, std::shared_ptr<Step>> actions;
+
+  std::shared_ptr<Step> default_action;
+
+  char **argv;
 };
 
 } // namespace NOPP
