@@ -58,11 +58,18 @@ public:
     if (status != READY)
       return;
 
-    for (auto &dep : dependencies) {
-      dep->run();
-    }
-    for (auto &dep : dependencies) {
-      dep->get_future().wait();
+    {
+      std::vector<std::future<void>> futures;
+
+      for (auto &dep : dependencies) {
+        futures.push_back(std::async([&dep]() {
+          dep->run();
+          dep->get_future().wait();
+        }));
+      }
+      for (auto &f : futures) {
+        f.wait();
+      }
     }
 
     status = RUNNING;
