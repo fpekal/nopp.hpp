@@ -33,10 +33,14 @@ public:
   }
 
   // Create a new step
-  static std::shared_ptr<Step> create(std::initializer_list<std::string> args) {
-    auto ret = std::shared_ptr<Step>{new Step(std::move(args))};
+  static std::shared_ptr<Step> create(std::span<const std::string> args) {
+    auto ret = std::shared_ptr<Step>{new Step(args)};
     ret->self = ret;
     return ret;
+  }
+
+  static std::shared_ptr<Step> create(std::initializer_list<std::string> args) {
+    return create(std::span<const std::string>{args.begin(), args.size()});
   }
 
   // Create a new EMPTY task, put previous as the dependency and return this new
@@ -48,7 +52,7 @@ public:
   }
 
   // Create a new task, put previous as the dependency and return this new task.
-  std::shared_ptr<Step> add(std::initializer_list<std::string> args) {
+  std::shared_ptr<Step> add(std::span<std::string> args) {
     auto s = create(std::move(args));
     s->depend_on(self.lock());
     return s;
@@ -123,7 +127,11 @@ private:
   Step() { future = promise.get_future().share(); }
 
   // Run the process args[0] with args[1..] arguments
-  explicit Step(std::initializer_list<std::string> args) : args{args} {
+  explicit Step(std::span<const std::string> args) {
+    this->args.reserve(args.size());
+    for (auto &a : args) {
+      this->args.push_back(a);
+    }
     future = promise.get_future().share();
   }
 
